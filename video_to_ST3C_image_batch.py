@@ -28,8 +28,6 @@ from ABRS_modules import create_3C_image
 
 
 def video_clips_to_3C_image_fun (dirPathInput,dirPathOutput,fbList,clipStart,clipEnd,clipsNumber,bufferSize,windowST,modelName,OSplatform):
-
-    OSplatform = platform.system()
     
     if modelName != 'none':
     
