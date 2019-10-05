@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Sat Oct  5 10:02:58 2019
 
-@author: auesro
-"""
 import numpy as np
 import scipy
 from scipy import ndimage
@@ -15,7 +11,6 @@ import matplotlib.pyplot as plt
 import cv2
 import os
 import platform
-
 import tensorflow as tf
 from tensorflow import keras
 
@@ -56,7 +51,11 @@ def video_clips_to_3C_image_fun (dirPathInput,dirPathOutput,fbList,clipStart,cli
         if (ext == 'avi' or ext == 'mov' or ext == 'mp4') == True:
             if OSplatform == 'Linux':           
                 fileDirPathInputName = dirPathInput + '/' + fileName;
-            
+            if OSplatform == 'Windows':           
+                fileDirPathInputName = dirPathInput + '\\' + fileName;
+            if OSplatform == 'Darwin':           
+                fileDirPathInputName = dirPathInput + '/' + fileName;
+                
             r = np.arange(0,clipEnd,bufferSize)
 
             for bf in r:
@@ -183,7 +182,7 @@ clipStart = 0
 clipEnd = 999 # number of frames in one clip
 
 
-clipsNumberMax = 2; #
+clipsNumberMax = 51; #
 
 #fbList = [1,2,3,4]; # works for raw movies with 2x2 arenas (split the frames into 4)
 fbList = [1]; # one arena in the frame
