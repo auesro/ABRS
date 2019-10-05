@@ -1,28 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+Created on Sat Oct  5 10:02:58 2019
 
+@author: auesro
+"""
 import numpy as np
-import scipy
-from scipy import ndimage
-from scipy import misc
 import pickle
-import time
-import matplotlib.pyplot as plt
-import cv2
 import os
 import platform
 import tensorflow as tf
 from tensorflow import keras
-
-from ABRS_modules import discrete_radon_transform
-from ABRS_modules import create_ST_image
-from ABRS_modules import smooth_2d
-from ABRS_modules import center_of_gravity
-#from ABRS_modules import subplot_images
 from ABRS_modules import getting_frame_record
 from ABRS_modules import read_frames
-from ABRS_modules import read_frames2
-from ABRS_modules import subtract_average
 from ABRS_modules import create_3C_image
 
 
@@ -41,7 +31,6 @@ def video_clips_to_3C_image_fun (dirPathInput,dirPathOutput,fbList,clipStart,cli
 
     for cl in clips:
 
-
         fileName = fileList[cl];
 
         ext = fileName[-3:];
@@ -53,7 +42,7 @@ def video_clips_to_3C_image_fun (dirPathInput,dirPathOutput,fbList,clipStart,cli
                 fileDirPathInputName = dirPathInput + '\\' + fileName;
             if OSplatform == 'Darwin':           
                 fileDirPathInputName = dirPathInput + '/' + fileName;
-                
+            
             r = np.arange(0,clipEnd,bufferSize)
 
             for bf in r:
@@ -61,10 +50,10 @@ def video_clips_to_3C_image_fun (dirPathInput,dirPathOutput,fbList,clipStart,cli
                     startFrame = bf;
                     endFrame = startFrame + bufferSize;
                         
-                    frRec = read_frames(startFrame, endFrame, fileDirPathInputName, [400,400])
+                    frRec = read_frames(startFrame, endFrame, fileDirPathInputName, newSize) #resizes frame to 400x400
 
                     if clIndex == clips[0] and startFrame == clipStart:
-                        frRecRemain = np.zeros((windowST,160000));
+                        frRecRemain = np.zeros((windowST,int(newSize[0])*int(newSize[0]))); #160000=400*400
                         frRec = np.concatenate((frRecRemain,frRec), axis=0);
 
                     if clIndex > clips[0] or startFrame > clipStart:
@@ -72,18 +61,17 @@ def video_clips_to_3C_image_fun (dirPathInput,dirPathOutput,fbList,clipStart,cli
 
                     for fb in fbList:
 
-                        recIm3C = np.zeros((50,80,80,3))
+                        recIm3C = np.zeros((bufferSize,80,80,3))
 
                         for w in range(0,frRec.shape[0]-windowST):
 
                             startWin = w;
                             endWin = startWin + windowST;
                        
-                            posDic, maxMovement, cfrVectRec, frameVectFloatRec = getting_frame_record(frRec, startWin, endWin,fb)
+                            posDic, maxMovement, cfrVectRec, frameVectFloatRec = getting_frame_record(frRec, startWin, endWin,fb, newSize)
 
 
                             im3C = create_3C_image (cfrVectRec)
-                            #print(im3C[30,30,2])
                             
                             if modelName != 'none':
                                 predictBehavior = 1  # predict behavior from ST-image and store the label
@@ -104,7 +92,7 @@ def video_clips_to_3C_image_fun (dirPathInput,dirPathOutput,fbList,clipStart,cli
                     
                     
 
-                            cv2.imshow('im3C',im3C)
+                            #cv2.imshow('im3C',im3C)
 
                             recIm3C[w,:,:,:]=im3C
 
@@ -113,7 +101,6 @@ def video_clips_to_3C_image_fun (dirPathInput,dirPathOutput,fbList,clipStart,cli
                                                        
 
                             if w == 0:
-                            
                                 xPosRec = xPos;
                                 yPosRec = yPos;
                                 maxMovementRec = maxMovement
@@ -133,24 +120,23 @@ def video_clips_to_3C_image_fun (dirPathInput,dirPathOutput,fbList,clipStart,cli
                                 else: behPredictionRec = 0     
                                    
                         
-                       
                         dictPosRec = {"xPosRec" : xPosRec, "yPosRec" : yPosRec};
 
                         dictST = {"recIm3C" : recIm3C, "dictPosRec" : dictPosRec, "maxMovementRec" : maxMovementRec, "behPredictionRec" : behPredictionRec};
                         
-                        nameSMRec = 'dict3C_' + fileName[0:-4] + '_fb' + str(fb) + '_bf_' + str('%06.0f' % bf) 
+                        nameSMRec = 'dict3C_' + fileName[0:-4] + '_Arena1_' + str('%06.0f' % bf) 
                        
                         if OSplatform == 'Linux':           
                             #newPath = dirPathOutput + '/' + fileName[0:-4] + '_fb' + str(fb)  #!!!!!!works with non-numbered clips (one clip per video recording)
-                            newPath = dirPathOutput + '/' + fileName[0:-6] + '_fb' + str(fb) #!!!!!!works with numbered clips (multiple clips of the same video; clip names end with index number)
+                            newPath = dirPathOutput + '/' + fileName[0:-4] + '_Arena1' #!!!!!!works with numbered clips (multiple clips of the same video; clip names end with index number)
                         
                         if OSplatform == 'Windows':           
                             #newPath = dirPathOutput + '\\' + fileName[0:-4] + '_fb' + str(fb)  #!!!!!!works with non-numbered clips (one clip per video recording)
-                            newPath = dirPathOutput + '\\' + fileName[0:-6] + '_fb' + str(fb) #!!!!!!works with numbered clips (multiple clips of the same video; clip names end with index number)
+                            newPath = dirPathOutput + '\\' + fileName[0:-4] + '_Arena1' #!!!!!!works with numbered clips (multiple clips of the same video; clip names end with index number)
 
                         if OSplatform == 'Darwin':           
                             #newPath = dirPathOutput + '/' + fileName[0:-4] + '_fb' + str(fb)  #!!!!!!works with non-numbered clips (one clip per video recording)
-                            newPath = dirPathOutput + '/' + fileName[0:-6] + '_fb' + str(fb) #!!!!!!works with numbered clips (multiple clips of the same video; clip names end with index number)
+                            newPath = dirPathOutput + '/' + fileName[0:-4] + '_Arena1' #!!!!!!works with numbered clips (multiple clips of the same video; clip names end with index number)
  
 
                         if not os.path.exists(newPath):
@@ -176,18 +162,20 @@ OSplatform = platform.system()
 
 frameRate = 30;
 
-clipStart = 0
-clipEnd = 999 # number of frames in one clip
+clipStart = 30;
+clipEnd = 32 # number of frames in one clip
 
-
-clipsNumberMax = 51; #
+newSize = [400,400];
+clipsNumberMax = 2; #
 
 #fbList = [1,2,3,4]; # works for raw movies with 2x2 arenas (split the frames into 4)
-fbList = [1]; # one arena in the frame
+#fbList = [1]; # one arena in the frame #AER: it will still subdivide the arena and take just the upper left square because of function getting_frame_record  
+fbList = [0];
+
 
 clipFirst = 0;
 
-bufferSize = 50;
+bufferSize = 3;
 
 # select a ConvNet model to recognize the behavior from the ST-images; behavior labels will be stored; select 'none' for no model
 
@@ -195,7 +183,7 @@ modelName = 'none' # use 'none' or the name in the model (must be in the ABRS fo
 
 #modelName = 'modelConv2ABRS_3C_train_with_labelCS1fb1_SS_plus_LiManualLabel'
 
-firstFolder = 0; # 
+firstFolder = 0;
 
 if OSplatform == 'Linux':
     
@@ -227,7 +215,7 @@ for fld in range(firstFolder, sizeVideoFolder):
 
     if currentVideoFolder[-5:] != 'Store' :
 
-        dirPathInput = rawVidDirPath #+ '\\' + currentVideoFolder;
+        dirPathInput = rawVidDirPath #+ '/' + currentVideoFolder;
         clipList = sorted(os.listdir(dirPathInput));szClipList = np.shape(clipList);
         clipsNumber = szClipList[0];
 
@@ -235,4 +223,3 @@ for fld in range(firstFolder, sizeVideoFolder):
             clipsNumber = clipsNumberMax;
 
         video_clips_to_3C_image_fun (dirPathInput,dirPathOutput,fbList,clipStart,clipEnd,clipsNumber,bufferSize,windowST,modelName,OSplatform);
-
