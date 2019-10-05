@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Sat Oct  5 10:02:58 2019
-
-@author: auesro
-"""
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,11 +8,9 @@ import pickle
 import platform
 from scipy import ndimage
 from scipy import misc
-
-
 #import ABRS_data_vis
 
-dirPathInput = '/home/auesro/Desktop/Store/hour1_fb1'
+dirPathInput = 'Path/to/ST3C/folder'
 
 fl=0 #select a file number in the ST3C folder
 
