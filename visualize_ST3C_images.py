@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# Copyright (c) 2019 Primoz Ravbar UCSB
+# Licensed under BSD 2-Clause [see LICENSE for details]
+# Written by Primoz Ravbar
+
+"""
+Modified on Sat Oct  5 10:02:58 2019
+@author: Augusto Escalante
+"""
 
 import numpy as np
 import matplotlib.pyplot as plt
 import os
 import pickle
 import platform
-from scipy import ndimage
-from scipy import misc
-#import ABRS_data_vis
 
-dirPathInput = 'Path/to/ST3C/folder'
+
+dirPathInput = '/home/auesro/Desktop/Store/20795_Arena0'
 
 fl=0 #select a file number in the ST3C folder
 
@@ -29,7 +35,8 @@ if OSplatform == 'Darwin':
 with open(fileDirPathInputName, "rb") as f:
 
     dict3C = pickle.load(f)
-    
+   
+
 
 recIm3C = dict3C["recIm3C"]    
 behPredictionRec = dict3C["behPredictionRec"]

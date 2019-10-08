@@ -1,20 +1,22 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # Copyright (c) 2019 Primoz Ravbar UCSB
 # Licensed under BSD 2-Clause [see LICENSE for details]
 # Written by Primoz Ravbar
 
+"""
+Modified on Sat Oct  5 10:02:58 2019
+@author: Augusto Escalante
+"""
 #This file contains functions used with ABRS
 
 
 import numpy as np
 import scipy
-from scipy import ndimage
 from scipy import misc #pip install pillow
 import pickle
-import time
-import matplotlib.pyplot as plt
 import cv2
 import os
-
 from scipy.signal import savgol_filter
 
 def create_ST_image(cfrVectRec):
@@ -55,7 +57,7 @@ def center_of_gravity(cfrVectRec):
     sF = np.sum(F,axis=0);
     sFA = np.sum(FA,axis=0);
 
-    cG = sFA/sF
+    cG = sFA/sF;
 
 
     return cG
@@ -143,7 +145,7 @@ def create_3C_image (cfrVectRec):
     imVar = np.reshape(totVar,(80,80))
     imVarNorm = imVar/np.max(np.max(imVar))
     imVarBin = np.zeros((80,80))
-    imVarBin[imVarNorm > 0.10] = 1; #######!!!!!!!!!!
+    imVarBin[imVarNorm > 0.10] = 1;
                                 
     I = np.reshape(cG,(80,80))*imVarBin;
     I = np.nan_to_num(I);
@@ -204,12 +206,22 @@ def subtract_average(frameVectRec,dim):
         
 
 def read_frames(startFrame, endFrame, file_name, newSize):
-
+#Modified to work with non-square movie frames
     
     cap = cv2.VideoCapture(file_name)
-
+        
     print(file_name)
 
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    
+    if height == width:
+        pass
+    if height < width:
+        pad = width-height
+    if height > width:
+        pad = height-width
+    
     for i in range(startFrame, endFrame):
 
         cap.set(1,i);
@@ -217,8 +229,19 @@ def read_frames(startFrame, endFrame, file_name, newSize):
        
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) #convert frame to gray
         
+        # Pad frame to make it square adding black pixels (frame,top,bottom,left,right)
+        if height == width:
+            gray = gray;
+        if height < width:
+            gray = cv2.copyMakeBorder(gray,0,pad,0,0,cv2.BORDER_CONSTANT,value=[0,0,0])
+        if height > width:
+            gray = cv2.copyMakeBorder(gray,0,0,0,pad,cv2.BORDER_CONSTANT,value=[0,0,0])
+        
+        #Resize frame to newSize
         rs = cv2.resize(gray,(newSize[0],newSize[1]));
+        #Reshape the frame into a 1 row, many columns (400*400=160000)
         frameVect = rs.reshape(1,newSize[0]*newSize[1]);
+        #Make the vector type float
         frameVectFloat = frameVect.astype(float);    
 
         if i == startFrame:
@@ -270,14 +293,17 @@ def read_frames2(startFrame, endFrame, file_name, newSize):
     return frRec;
 
 
-def getting_frame_record(frRec, startWin, endWin, fb):
+def getting_frame_record(frRec, startWin, endWin, fb, newSize):
 
-            
+    #Subdivide (or not, fb==0) the video frame in order to analyze each arena (for the authors setup that consist on
+    #4 plates each with a fly in the same frame)        
     for i in range(startWin,endWin):
 
             frame = frRec[i,:];
-            gray = frame.reshape(400,400);
-
+            gray = frame.reshape(newSize[0]*newSize[1]);
+            
+            if fb == 0:
+                rf = gray;
             if fb == 1:
                 rf = gray[0:200,0:200];
                 
@@ -292,7 +318,7 @@ def getting_frame_record(frRec, startWin, endWin, fb):
 
             rs = rf   
             
-            frameVect = rs.reshape(1,200*200);
+            frameVect = rs.reshape(1,int(newSize[0])*int(newSize[1]));
             frameVectFloat = frameVect.astype(float)
 
  
@@ -306,23 +332,25 @@ def getting_frame_record(frRec, startWin, endWin, fb):
                 frameVectFloatRec = np.vstack((frameVectFloatRec,frameVectFloat));
                 previousFrame = frameVectFloat;
 
-
+    #Find the index of the first pixel in the frame that shows the highest difference in intensity respect to the previous frame
     indMaxDiff = np.argmax(frameDiffComm);
     
-    rowMaxDiff = np.floor(indMaxDiff/200);
-    colMaxDiff = indMaxDiff - (rowMaxDiff*200);
+    rowMaxDiff = np.floor(indMaxDiff/int(newSize[0]));
+    colMaxDiff = indMaxDiff - (rowMaxDiff*int(newSize[0]));
 
-    rowMaxDiff = rowMaxDiff.astype(int);
+    rowMaxDiff = rowMaxDiff.astype(int); 
     colMaxDiff = colMaxDiff.astype(int);
 
+    #Find the value of the pixel in the frame that shows the highest difference in intensity respect to the previous frame
     maxMovement = np.max(frameDiffComm);
 
     posDic = {"xPos" : colMaxDiff, "yPos" : rowMaxDiff};
     
 
     for i in range(0,(endWin-startWin)):
-        
-           rs = frameVectFloatRec[i,:].reshape(200,200)
+           
+           #Draw a 80x80 square around the pixel of maximum intensity difference 
+           rs = frameVectFloatRec[i,:].reshape(int(newSize[0]),int(newSize[0]))
 
            bottomOvershot=0
            rightOvershot=0
@@ -331,21 +359,23 @@ def getting_frame_record(frRec, startWin, endWin, fb):
            if topEdge < 0:
                topEdge=0;
            bottomEdge = rowMaxDiff+40;
-           if bottomEdge > 200:
-               bottomOvershot = bottomEdge-200
-               bottomEdge=200;
+           if bottomEdge > int(newSize[0]):
+               bottomOvershot = bottomEdge-int(newSize[0])
+               bottomEdge=int(newSize[0]);
            leftEdge = colMaxDiff-40;
            if leftEdge < 0:
                leftEdge=0;
            rightEdge = colMaxDiff+40;
-           if rightEdge > 200:
-               rightOvershot = rightEdge-200
-               rightEdge=200;
+           if rightEdge > int(newSize[0]):
+               rightOvershot = rightEdge-int(newSize[0])
+               rightEdge=int(newSize[0]);
+           
 
+           #Select the 80x80 square from the frame
            cfr = rs[topEdge:bottomEdge,leftEdge:rightEdge];
            shapeCfr = cfr.shape; 
 
-
+           #Correct (adding zeros) the square shape in case it is not 80x80 due to negative values in above section substractions
            if topEdge == 0:
                rw = np.zeros((np.absolute(shapeCfr[0]-80),shapeCfr[1]))
                cfr = np.vstack((rw,cfr))
@@ -363,8 +393,10 @@ def getting_frame_record(frRec, startWin, endWin, fb):
                cfr = np.hstack((cfr,col))
                shapeCfr = cfr.shape;
 
-    
 
+           #smallcfr = resize_to_80 (cfr)
+           #cfrVect = smallcfr.reshape(1,80*80);
+           
            cfrVect = cfr.reshape(1,80*80);
 
 
@@ -374,7 +406,15 @@ def getting_frame_record(frRec, startWin, endWin, fb):
                cfrVectRec = np.vstack((cfrVectRec,cfrVect));
             
 
-    return posDic, maxMovement, cfrVectRec, frameVectFloatRec;    
+    return posDic, maxMovement, cfrVectRec, frameVectFloatRec;   
+
+#def resize_to_80(cfr):
+#    
+#    smallcfr = cv2.resize(cfr,(80,80))
+#    
+#    cv2.destroyAllWindows();
+#    
+#    return smallcfr
 
 def find_movement_in_fb(rawFrRec, startWin, endWin, fb, newSize):
 
