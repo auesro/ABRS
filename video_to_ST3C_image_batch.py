@@ -22,7 +22,7 @@ from ABRS_modules import create_3C_image
 OSplatform = platform.system()
 
 ###############################################################
-#Parameters to set by the user
+#Parameters set by the user
 ###############################################################
 
 frameRate = 30;
@@ -36,7 +36,7 @@ clipsNumberMax = 1; #
 #Size to which resize the original video:
 newSize = [400,400];
 
-#Desired roi size around subject of interest (must be pair)= field of view from the original frame:
+#Desired roi size around subject of interest (must be pair) = subarea of the original frame:
 roi = 100;
 
 #Desired final image size for training the Convolutional Neural Network:
