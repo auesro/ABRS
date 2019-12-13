@@ -16,9 +16,9 @@ import pickle
 import platform
 
 
-dirPathInput = '/home/auesro/Desktop/Store/20795_Arena0'
+dirPathInput = '/home/augustoer/ABRS/hour120_Arena1'
 
-fl=0 #select a file number in the ST3C folder
+fl=3 #select a file number in the ST3C folder
 
 fileList = sorted(os.listdir(dirPathInput))
 inputFileName = fileList[fl];
@@ -44,25 +44,25 @@ behPredictionRec = dict3C["behPredictionRec"]
 print(fileDirPathInputName)
 
 #Plot all images in recIm3C
-fig=plt.figure(figsize=(10, 10))
+fig=plt.figure(figsize=(10, 10), dpi=300)
 
-imDiff = np.zeros((80,80))
+# imDiff = np.zeros((80,80)) #AER: Unknown function
 
 for i in range(1, len(recIm3C)):
         fig.add_subplot(8, 8, i)
         
-        im3C = recIm3C[i,:,:,:]/255
-        imDiff = imDiff + im3C[...,1]
+        # im3C = recIm3C[i,:,:,:]/255 #AER: Unknown function
+        # imDiff = imDiff + im3C[...,1] #AER: Unknown function
         
-        imToPlot = recIm3C[i,:,:,:]/255            
+        imToPlot = recIm3C[i,:,:,:]/255    
         
         plt.imshow(imToPlot)
-        #plt.title(str(behPredictionRec[i])) #Plots labels when they exist
+        #plt.title(str(behPredictionRec[i])) #AER:Plots labels when they exist
                 
 plt.show()
 
 
-#Plot single image i from recIm3C
-#i=1
-#plt.imshow(recIm3C[i,:,:,:]/255);plt.show()
+# # Plot single image i from recIm3C
+# i=1
+# plt.imshow(recIm3C[i,:,:,:]/255);plt.show()
 

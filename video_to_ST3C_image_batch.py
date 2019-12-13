@@ -29,12 +29,18 @@ frameRate = 30;
 
 #Number of frames in one clip
 clipStart = 0;
-clipEnd = 99 
+clipEnd = 199 
 bufferSize = 50;
 clipsNumberMax = 1; #
 
 #Size to which resize the original video:
 newSize = [400,400];
+
+#Desired roi size around subject of interest (must be pair)= field of view from the original frame:
+roi = 100;
+
+#Desired final image size for training the Convolutional Neural Network:
+CVNsize = 80; 
 
 #Number of frames to calculate the higher scale spatiotemporal feature (red channel):
 windowST = 16;
@@ -53,9 +59,9 @@ modelName = 'none' # use 'none' or the name in the model (must be in the ABRS fo
 
 if OSplatform == 'Linux':
     
-    rawVidDirPath = '/home/auesro/Desktop/ABRS Test';
+    rawVidDirPath = '/home/augustoer/ABRS/Test';
 
-    dirPathOutput = '/home/auesro/Desktop/Store'; #ST-images and other data will be stored here
+    dirPathOutput = '/home/augustoer/ABRS'; #ST-images and other data will be stored here
 
 if OSplatform == 'Windows':
 
@@ -72,7 +78,7 @@ if OSplatform == 'Darwin':
     
 
 
-def video_clips_to_3C_image_fun (dirPathInput,dirPathOutput,fbList,clipStart,clipEnd,clipsNumber,bufferSize,windowST,modelName,OSplatform):
+def video_clips_to_3C_image_fun (dirPathInput,dirPathOutput,fbList,clipStart,clipEnd,clipsNumber,bufferSize,windowST,modelName,OSplatform,roi,CVNsize):
     
     if modelName != 'none':
     
@@ -116,16 +122,17 @@ def video_clips_to_3C_image_fun (dirPathInput,dirPathOutput,fbList,clipStart,cli
 
                     for fb in fbList:
 
-                        recIm3C = np.zeros((bufferSize,80,80,3))
+                        recIm3C = np.zeros((bufferSize,CVNsize,CVNsize,3))
+                        # recIm3C = np.zeros((bufferSize,80,80,3))
 
                         for w in range(0,frRec.shape[0]-windowST):
 
                             startWin = w;
                             endWin = startWin + windowST;
                        
-                            posDic, maxMovement, cfrVectRec, frameVectFloatRec = getting_frame_record(frRec, startWin, endWin,fb, newSize)
+                            posDic, maxMovement, cfrVectRec, frameVectFloatRec = getting_frame_record(frRec, startWin, endWin,fb, newSize, roi, CVNsize)
 
-                            im3C = create_3C_image (cfrVectRec)
+                            im3C = create_3C_image (cfrVectRec,CVNsize)
                             
                             if modelName != 'none':
                                 predictBehavior = 1  # predict behavior from ST-image and store the label
@@ -134,7 +141,8 @@ def video_clips_to_3C_image_fun (dirPathInput,dirPathOutput,fbList,clipStart,cli
                             
                             if predictBehavior == 1:
                                                                 
-                                X_rs = np.zeros((1,80,80,3))
+                                X_rs = np.zeros((1,CVNsize,CVNsize,3))
+                                # X_rs = np.zeros((1,80,80,3))
         
                                 X_rs[0,:,:,:]=im3C
 
@@ -208,7 +216,6 @@ def video_clips_to_3C_image_fun (dirPathInput,dirPathOutput,fbList,clipStart,cli
                                    
                         with open(fileDirPathOutputName, "wb") as f:
                             pickle.dump(dictST, f)
-
                              
                     frRecSh = frRec.shape;
                     frRecRemain = frRec[bufferSize:frRecSh[0],:]
@@ -216,10 +223,11 @@ def video_clips_to_3C_image_fun (dirPathInput,dirPathOutput,fbList,clipStart,cli
             print(clIndex)
 
            
-#Batch part    
-videoFolderList = sorted(os.listdir(rawVidDirPath));
+#Batch part:    
+# videoFolderList = sorted(next(os.walk(rawVidDirPath))[2]); #list only the files, not directories
+videoFolderList = sorted(os.listdir(rawVidDirPath)); #list of files and directories
 
-sz = np.shape(videoFolderList);sizeVideoFolder = sz[0];
+sz = np.shape(videoFolderList); sizeVideoFolder = sz[0];
 
 for fld in range(firstFolder, sizeVideoFolder):
     
@@ -230,10 +238,25 @@ for fld in range(firstFolder, sizeVideoFolder):
     if currentVideoFolder[-5:] != 'Store' :
 
         dirPathInput = rawVidDirPath #+ '/' + currentVideoFolder;
-        clipList = sorted(os.listdir(dirPathInput));szClipList = np.shape(clipList);
+        # clipList = sorted(next(os.walk(dirPathInput))[2]);
+        clipList = sorted(os.listdir(dirPathInput));
+        szClipList = np.shape(clipList);
         clipsNumber = szClipList[0];
 
         if clipsNumber > clipsNumberMax:
             clipsNumber = clipsNumberMax;
 
-        video_clips_to_3C_image_fun (dirPathInput,dirPathOutput,fbList,clipStart,clipEnd,clipsNumber,bufferSize,windowST,modelName,OSplatform);
+        video_clips_to_3C_image_fun (dirPathInput,dirPathOutput,fbList,clipStart,clipEnd,clipsNumber,bufferSize,windowST,modelName,OSplatform,roi,CVNsize);
+        
+        
+# #Batch part:    
+# videoFileList = sorted(next(os.walk(rawVidDirPath))[2]); #list only the files, not directories
+
+
+# for nf in range(1,len(videoFileList)):
+    
+#     currentFile = videoFileList[nf];
+#     dirPathInput = rawVidDirPath
+#     clipsNumber = len(videoFileList);
+    
+#     video_clips_to_3C_image_fun (dirPathInput,dirPathOutput,fbList,clipStart,clipEnd,clipsNumber,bufferSize,windowST,modelName,OSplatform,roi,CVNsize);

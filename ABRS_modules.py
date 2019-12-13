@@ -19,7 +19,7 @@ import cv2
 import os
 from scipy.signal import savgol_filter
 
-def create_ST_image(cfrVectRec):
+def create_ST_image(cfrVectRec, roi):
 
     shapeCfrVectRec = cfrVectRec.shape;
     rw = np.zeros((1,shapeCfrVectRec[1])); 
@@ -38,7 +38,7 @@ def create_ST_image(cfrVectRec):
 
     sM = np.sum(np.absolute(MST), axis=0);
     
-    I = np.reshape(sM,(80,80));
+    I = np.reshape(sM,(roi,roi));
 	 
     return I, sM, MST;
 
@@ -125,33 +125,33 @@ def center_of_gravity3(cfrVectRec):
 
     return cG, F1
 
-def create_3C_image (cfrVectRec):
-
-
+def create_3C_image (cfrVectRec, CVNsize):
+    
     cG=center_of_gravity(cfrVectRec);
 
     averageSubtFrameVecRec = subtract_average(cfrVectRec,0)
 
-    imRaw = np.reshape(cfrVectRec[1,:],(80,80))
+    imRaw = np.reshape(cfrVectRec[1,:],(CVNsize,CVNsize));
+    imRaw = imRaw.astype('uint')
 
-    imDiff = np.reshape(cfrVectRec[1,:]-cfrVectRec[0,:],(80,80));
+    imDiff = np.reshape(cfrVectRec[1,:]-cfrVectRec[0,:],(CVNsize,CVNsize));
     imDiffAbs = np.absolute(imDiff)
     maxImDiffAbs = np.max(np.max(imDiffAbs))
-    imDiffCl = np.zeros((80,80))
+    imDiffCl = np.zeros((CVNsize,CVNsize))
     imDiffCl[imDiffAbs > maxImDiffAbs/10] = imDiff[imDiffAbs > maxImDiffAbs/10]
     imDiffClNorm = imDiffCl/maxImDiffAbs
                                 
     totVar = np.sum(np.absolute(averageSubtFrameVecRec),axis=0)
-    imVar = np.reshape(totVar,(80,80))
+    imVar = np.reshape(totVar,(CVNsize,CVNsize))
     imVarNorm = imVar/np.max(np.max(imVar))
-    imVarBin = np.zeros((80,80))
+    imVarBin = np.zeros((CVNsize,CVNsize))
     imVarBin[imVarNorm > 0.10] = 1;
                                 
-    I = np.reshape(cG,(80,80))*imVarBin;
+    I = np.reshape(cG,(CVNsize,CVNsize))*imVarBin;
     I = np.nan_to_num(I);
                                 
     imSTsm = smooth_2d (I, 3)
-    sM = imSTsm.reshape((80*80))
+    sM = imSTsm.reshape((CVNsize*CVNsize))
     sM = np.nan_to_num(sM)
 
     if np.max(sM) > 0:
@@ -159,12 +159,12 @@ def create_3C_image (cfrVectRec):
     else:
         sMNorm = sM
 
-    I_RS = np.reshape(sMNorm,(80,80))
+    I_RS = np.reshape(sMNorm,(CVNsize,CVNsize))
 
     imDiffAbs = np.absolute(imDiffClNorm)
 
-    imDiffClNeg = np.zeros((80,80))
-    imDiffClPos = np.zeros((80,80))
+    imDiffClNeg = np.zeros((CVNsize,CVNsize))
+    imDiffClPos = np.zeros((CVNsize,CVNsize))
     imDiffClNeg[imDiffClNorm<0] = np.absolute(imDiffClNorm[imDiffClNorm<0])
     imDiffClPos[imDiffClNorm>0] = imDiffClNorm[imDiffClNorm>0]
 
@@ -172,10 +172,10 @@ def create_3C_image (cfrVectRec):
     imDiffClNormPos = imDiffClPos/np.max(np.max(imDiffClPos))
     
 
-    rgbArray = np.zeros((80,80,3), 'uint8')
-    rgbArray[..., 0] = I_RS*255    
-    rgbArray[..., 1] = imDiffAbs*255
-    rgbArray[..., 2] = imRaw*255
+    rgbArray = np.zeros((CVNsize,CVNsize,3), 'uint8')
+    rgbArray[..., 0] = I_RS*255 #blue channel for cv2.imshow()/ red channel for plt.imshow(): Difference with average of windowST frames
+    rgbArray[..., 1] = imDiffAbs*255 #green channel for cv2.imshow() and plt.imshow(): Difference with previous frame
+    rgbArray[..., 2] = imRaw*255 #red channel for cv2.imshow()/ blue channel for plt.imshow()
 
     im3C = rgbArray
 
@@ -293,13 +293,14 @@ def read_frames2(startFrame, endFrame, file_name, newSize):
     return frRec;
 
 
-def getting_frame_record(frRec, startWin, endWin, fb, newSize):
+def getting_frame_record(frRec, startWin, endWin, fb, newSize, roi, CVNsize):
 
     #Subdivide (or not, fb==0) the video frame in order to analyze each arena (for the authors setup that consist on
     #4 plates each with a fly in the same frame)        
     for i in range(startWin,endWin):
 
             frame = frRec[i,:];
+            #Nothing changes from frame to gray, they are identical columns
             gray = frame.reshape(newSize[0]*newSize[1]);
             
             if fb == 0:
@@ -349,57 +350,55 @@ def getting_frame_record(frRec, startWin, endWin, fb, newSize):
 
     for i in range(0,(endWin-startWin)):
            
-           #Draw a 80x80 square around the pixel of maximum intensity difference 
+           #Make frameVectFloatRec square
            rs = frameVectFloatRec[i,:].reshape(int(newSize[0]),int(newSize[0]))
-
+           #Calculate a roixroi square around the pixel of maximum intensity difference 
            bottomOvershot=0
            rightOvershot=0
            
-           topEdge = rowMaxDiff-40;
+           topEdge = rowMaxDiff-int(roi*0.5);
            if topEdge < 0:
                topEdge=0;
-           bottomEdge = rowMaxDiff+40;
+           bottomEdge = rowMaxDiff+int(roi*0.5);
            if bottomEdge > int(newSize[0]):
                bottomOvershot = bottomEdge-int(newSize[0])
                bottomEdge=int(newSize[0]);
-           leftEdge = colMaxDiff-40;
+           leftEdge = colMaxDiff-int(roi*0.5);
            if leftEdge < 0:
                leftEdge=0;
-           rightEdge = colMaxDiff+40;
+           rightEdge = colMaxDiff+int(roi*0.5);
            if rightEdge > int(newSize[0]):
                rightOvershot = rightEdge-int(newSize[0])
                rightEdge=int(newSize[0]);
            
 
-           #Select the 80x80 square from the frame
+           #Select the roixroi square from the frame
            cfr = rs[topEdge:bottomEdge,leftEdge:rightEdge];
-           shapeCfr = cfr.shape; 
+           shapeCfr = cfr.shape;
 
-           #Correct (adding zeros) the square shape in case it is not 80x80 due to negative values in above section substractions
+           #Correct (adding zeros) to make a square shape in case it is not roixroi due to negative values in above section substractions
            if topEdge == 0:
-               rw = np.zeros((np.absolute(shapeCfr[0]-80),shapeCfr[1]))
+               rw = np.zeros((np.absolute(shapeCfr[0]-roi),shapeCfr[1]))
                cfr = np.vstack((rw,cfr))
                shapeCfr = cfr.shape; 
            if bottomOvershot > 0:
-               rw = np.zeros((np.absolute(shapeCfr[0]-80),shapeCfr[1]))
+               rw = np.zeros((np.absolute(shapeCfr[0]-roi),shapeCfr[1]))
                cfr = np.vstack((cfr,rw))
                shapeCfr = cfr.shape; 
            if leftEdge == 0:
-               col = np.zeros((shapeCfr[0], np.absolute(shapeCfr[1]-80)))
+               col = np.zeros((shapeCfr[0], np.absolute(shapeCfr[1]-roi)))
                cfr = np.hstack((col,cfr))
                shapeCfr = cfr.shape; 
            if rightOvershot > 0:
-               col = np.zeros((shapeCfr[0], np.absolute(shapeCfr[1]-80)))
+               col = np.zeros((shapeCfr[0], np.absolute(shapeCfr[1]-roi)))
                cfr = np.hstack((cfr,col))
                shapeCfr = cfr.shape;
-
-
-           #smallcfr = resize_to_80 (cfr)
-           #cfrVect = smallcfr.reshape(1,80*80);
            
-           cfrVect = cfr.reshape(1,80*80);
-
-
+           #Resize roixroi to CVNsizexCVNsize:
+           smallcfr = cv2.resize(cfr,(CVNsize,CVNsize));
+           cfrVect = smallcfr.reshape(1,CVNsize*CVNsize);
+           cv2.destroyAllWindows();
+           
            if i == 0:
                cfrVectRec = cfrVect;
            if i > 0:
@@ -408,15 +407,9 @@ def getting_frame_record(frRec, startWin, endWin, fb, newSize):
 
     return posDic, maxMovement, cfrVectRec, frameVectFloatRec;   
 
-#def resize_to_80(cfr):
-#    
-#    smallcfr = cv2.resize(cfr,(80,80))
-#    
-#    cv2.destroyAllWindows();
-#    
-#    return smallcfr
 
-def find_movement_in_fb(rawFrRec, startWin, endWin, fb, newSize):
+
+def find_movement_in_fb(rawFrRec, startWin, endWin, fb, newSize, roi):
 
     sh = np.shape(rawFrRec);
     oldSize = [int(np.sqrt(sh[1])),int(np.sqrt(sh[1]))];
@@ -430,7 +423,6 @@ def find_movement_in_fb(rawFrRec, startWin, endWin, fb, newSize):
             rawFrameVect = rawFrRec[i,:];            
             rawFrame = rawFrameVect.reshape(oldSize[0],oldSize[1]);
             resizedFrame = cv2.resize(rawFrame,(newSize[0],newSize[1]));
-            
             
 
             if fb == 1:
@@ -493,16 +485,16 @@ def find_movement_in_fb(rawFrRec, startWin, endWin, fb, newSize):
 
             rowPos = posDic["yPos"]; colPos = posDic["xPos"];    
 
-            topEdge = rowPos-40;
+            topEdge = rowPos-(roi*0.5);
             if topEdge < 0:
                 topEdge=0;
-            bottomEdge = rowPos+40;
+            bottomEdge = rowPos+(roi*0.5);
             if bottomEdge < 0:
                bottomEdge=0;
-            leftEdge = colPos-40;
+            leftEdge = colPos-(roi*0.5);
             if leftEdge < 0:
                 leftEdge=0;
-            rightEdge = colPos+40;
+            rightEdge = colPos+(roi*0.5);
             if rightEdge < 0:
                 rightEdge=0;
 
@@ -510,17 +502,17 @@ def find_movement_in_fb(rawFrRec, startWin, endWin, fb, newSize):
             
             shapeZoomInFrame = zoomInFrame.shape; 
             
-            if shapeZoomInFrame[1] < 80:
-                col = np.zeros((shapeZoomInFrame[0], np.absolute(shapeZoomInFrame[1]-80)))
+            if shapeZoomInFrame[1] < roi:
+                col = np.zeros((shapeZoomInFrame[0], np.absolute(shapeZoomInFrame[1]-roi)))
                 zoomInFrame = np.concatenate((col,zoomInFrame), axis=1);
                 shapeZoomInFrame = zoomInFrame.shape;
-            if shapeZoomInFrame[0] < 80:
-                rw = np.zeros((np.absolute(shapeZoomInFrame[0]-80),shapeZoomInFrame[1]));
+            if shapeZoomInFrame[0] < roi:
+                rw = np.zeros((np.absolute(shapeZoomInFrame[0]-roi),shapeZoomInFrame[1]));
                 zoomInFrame = np.concatenate((rw,zoomInFrame), axis=0);
                 shapeZoomInFrame = zoomInFrame.shape;
     
 
-            zoomInFrameVect = zoomInFrame.reshape(1,80*80);
+            zoomInFrameVect = zoomInFrame.reshape(1,roi*roi);
 
             if i == 0:
                 zoomInFrameVectRec = zoomInFrameVect;
