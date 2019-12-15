@@ -1,5 +1,7 @@
 This is a modified version of ABRS (see below):
+
 -It now takes any frame size and shape
+
 -You can set both the area around the animal (roi) and the size of the frame to be used as input to the CNN (CNNsize).
 
 Automatic Behavior Recognition System (ABRS)
