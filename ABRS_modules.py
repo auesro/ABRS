@@ -237,9 +237,11 @@ def read_frames(startFrame, endFrame, file_name, newSize):
         if height > width:
             gray = cv2.copyMakeBorder(gray,0,0,0,pad,cv2.BORDER_CONSTANT,value=[0,0,0])
         
-        #Resize frame to newSize
-        rs = cv2.resize(gray,(newSize[0],newSize[1]));
-        #Reshape the frame into a 1 row, many columns (400*400=160000)
+        if newSize[0] != height or newSize[0] != width: #Resize frame to newSize
+            rs = cv2.resize(gray,(newSize[0],newSize[1]));
+        if newSize[0] == height or newSize[0] == width: #No resizing:
+            rs = gray;
+        #Reshape the frame into a 1 row, many columns (for newSize=400: 400*400=160000)
         frameVect = rs.reshape(1,newSize[0]*newSize[1]);
         #Make the vector type float
         frameVectFloat = frameVect.astype(float);    

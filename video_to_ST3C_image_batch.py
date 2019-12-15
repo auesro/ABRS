@@ -29,21 +29,26 @@ frameRate = 30;
 
 #Number of frames in one clip
 clipStart = 0;
-clipEnd = 199 
+clipEnd = 99 
 bufferSize = 50;
 clipsNumberMax = 1; #
 
-#Size to which resize the original video:
+#Size to which resize the original video (if equal to the longest dimension, 
+#no resizing will take place (no resizing will result in slower processing 
+#and apparently there is no resolution advantage given the final resizing to 80)):
 newSize = [400,400];
 
 #Desired roi size around subject of interest (must be pair) = subarea of the original frame:
-roi = 100;
+roi = 80;
 
 #Desired final image size for training the Convolutional Neural Network:
 CVNsize = 80; 
 
 #Number of frames to calculate the higher scale spatiotemporal feature (red channel):
-windowST = 16;
+windowST = 15; #~=0.5 seconds at 30 fps
+# windowST = 10; #~=0.33 seconds at 30 fps
+# windowST = 20; #~=0.66 seconds at 30 fps
+# windowST = 30; #=1 second at 30 fps
 
 #fbList = [1,2,3,4]; # works for raw movies with 2x2 arenas (split the frames into 4)
 #fbList = [1]; # one arena in the frame #AER: it will still subdivide the arena and take just the upper left square because of function getting_frame_record  
@@ -59,21 +64,24 @@ modelName = 'none' # use 'none' or the name in the model (must be in the ABRS fo
 
 if OSplatform == 'Linux':
     
-    rawVidDirPath = '/home/augustoer/ABRS/Test';
+    # rawVidDirPath = '/home/augustoer/ABRS/Test'; #lab path
+    rawVidDirPath = '/home/auesro/Desktop/ABRS/Test'; #home path
+    # rawVidDirPath = '/home/auesro/Desktop/ABRS Test'; #logitech
 
-    dirPathOutput = '/home/augustoer/ABRS'; #ST-images and other data will be stored here
+    # dirPathOutput = '/home/augustoer/ABRS'; #ST-images and other data will be stored here
+    dirPathOutput = '/home/auesro/Desktop/ABRS'; #home path
 
-if OSplatform == 'Windows':
+# if OSplatform == 'Windows':
 
-    rawVidDirPath = 'INSERT ROW VIDEO FOLDER PATH';
+#     rawVidDirPath = 'INSERT ROW VIDEO FOLDER PATH';
 
-    dirPathOutput = 'INSERT THE OUTPUT FOLDER PATH'; #ST-images and other data will be stored here
+#     dirPathOutput = 'INSERT THE OUTPUT FOLDER PATH'; #ST-images and other data will be stored here
 
-if OSplatform == 'Darwin':
+# if OSplatform == 'Darwin':
     
-    rawVidDirPath = 'INSERT ROW VIDEO FOLDER PATH';
+#     rawVidDirPath = 'INSERT ROW VIDEO FOLDER PATH';
 
-    dirPathOutput = 'INSERT THE OUTPUT FOLDER PATH'; #ST-images and other data will be stored here   
+#     dirPathOutput = 'INSERT THE OUTPUT FOLDER PATH'; #ST-images and other data will be stored here   
 ##################################################################
     
 
@@ -123,7 +131,6 @@ def video_clips_to_3C_image_fun (dirPathInput,dirPathOutput,fbList,clipStart,cli
                     for fb in fbList:
 
                         recIm3C = np.zeros((bufferSize,CVNsize,CVNsize,3))
-                        # recIm3C = np.zeros((bufferSize,80,80,3))
 
                         for w in range(0,frRec.shape[0]-windowST):
 
@@ -142,7 +149,6 @@ def video_clips_to_3C_image_fun (dirPathInput,dirPathOutput,fbList,clipStart,cli
                             if predictBehavior == 1:
                                                                 
                                 X_rs = np.zeros((1,CVNsize,CVNsize,3))
-                                # X_rs = np.zeros((1,80,80,3))
         
                                 X_rs[0,:,:,:]=im3C
 
@@ -161,15 +167,15 @@ def video_clips_to_3C_image_fun (dirPathInput,dirPathOutput,fbList,clipStart,cli
                                                        
 
                             if w == 0:
-                                global xPosRec
+                                global xPosRec #AER
                                 xPosRec = xPos;
-                                global yPosRec
+                                global yPosRec #AER
                                 yPosRec = yPos;
-                                global maxMovementRec
+                                global maxMovementRec #AER
                                 maxMovementRec = maxMovement
                                     
                                 if modelName != 'none': 
-                                       global behPredictionRec 
+                                       global behPredictionRec#AER
                                        behPredictionRec = predictionLabel 
                                 else: behPredictionRec = 0        
                                 
@@ -183,11 +189,11 @@ def video_clips_to_3C_image_fun (dirPathInput,dirPathOutput,fbList,clipStart,cli
                                     behPredictionRec = np.vstack((behPredictionRec,predictionLabel))
                                 else: behPredictionRec = 0     
                                    
-                        xPosRec=0
-                        yPosRec=0
+                        xPosRec=0 #AER
+                        yPosRec=0 #AER
                         dictPosRec = {"xPosRec" : xPosRec, "yPosRec" : yPosRec};
-                        maxMovementRec=0
-                        behPredictionRec=0
+                        maxMovementRec=0 #AER
+                        behPredictionRec=0 #AER
                         dictST = {"recIm3C" : recIm3C, "dictPosRec" : dictPosRec, "maxMovementRec" : maxMovementRec, "behPredictionRec" : behPredictionRec};
                         
                         nameSMRec = 'dict3C_' + fileName[0:-4] + '_Arena1_' + str('%06.0f' % bf) 

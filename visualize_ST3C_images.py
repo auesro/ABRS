@@ -16,9 +16,11 @@ import pickle
 import platform
 
 
-dirPathInput = '/home/augustoer/ABRS/hour120_Arena1'
+# dirPathInput = '/home/augustoer/ABRS/hour120_Arena1' #lab path
+dirPathInput = '/home/auesro/Desktop/ABRS/Test/Result' #home path
+# dirPathInput = '/home/auesro/Desktop/ABRS/20795_Arena1' #home path logitech
 
-fl=3 #select a file number in the ST3C folder
+fl=0 #select a file number in the ST3C folder
 
 fileList = sorted(os.listdir(dirPathInput))
 inputFileName = fileList[fl];
@@ -38,8 +40,8 @@ with open(fileDirPathInputName, "rb") as f:
    
 
 
-recIm3C = dict3C["recIm3C"]    
-behPredictionRec = dict3C["behPredictionRec"]
+recIm3C = dict3C#["recIm3C"]    
+# behPredictionRec = dict3C["behPredictionRec"]
     
 print(fileDirPathInputName)
 
