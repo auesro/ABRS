@@ -39,8 +39,8 @@ roi = 80;
 #Desired final image size for training the Convolutional Neural Network:
 CVNsize = 80; 
 
-
-startFrame = 300  # set this to any frame in the movie clip
+#Set this to any frame in the video:
+startFrame = 300  
 endFrame = 350
 
 #Number of frames to calculate the higher scale spatiotemporal feature (red channel):
@@ -56,7 +56,7 @@ fbList = 0;
 ###############################################################
 
 
-# show an "Open" dialog box and return the path to the selected file
+# show an "Open File" dialog box and returns the path to the selected file:
 root = tkinter.Tk()
 root.wm_withdraw()
 fileDirPathInputName = filedialog.askopenfilename()
@@ -66,31 +66,35 @@ root.mainloop()
 
 cap = cv2.VideoCapture(fileDirPathInputName);
 
+#Find out width and height of video:
 width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
+#Calculate amount of padding to add to make frame square:
 if height < width:
     pad = width-height
 if height > width:
     pad = height-width
 
+#Preallocation:
 prevFrame = np.zeros((newSize[0],newSize[0]))
 frRec = np.zeros((windowST+1,newSize[0]*newSize[1]))
 im3Crec = np.zeros(((endFrame-startFrame),CVNsize,CVNsize,3))
 
+#Read frames one by one from startFrame to endFrame:
 for frameInd in range(startFrame,endFrame,1):
 
     cap.set(1,frameInd)
-    
     ret, frame = cap.read()
-
+    
+    #Check frames and convert to grayscale:
     if np.size(np.shape(frame)) >= 2:            
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) # Convert frame to grayscale
     else:
         print('Corrupt frame with less than 2 dimensions!!')
         gray = np.zeros((width, height)) # Fill the corrupt frame with black
         
-    # Pad frame to make it square adding black pixels (frame,top,bottom,left,right)
+    # Pad frame to make it square adding "pad" black pixels to the bottom or to the right (frame,top,bottom,left,right)
     if height == width:
         gray2 = gray;
     if height < width:
@@ -98,7 +102,7 @@ for frameInd in range(startFrame,endFrame,1):
     if height > width:
         gray2 = cv2.copyMakeBorder(gray,0,0,0,pad,cv2.BORDER_CONSTANT,value=[0,0,0])
     
-    #Resize frame to newSize if any of the dimensions is different from newSize    
+    #Resize frame to newSize if any of the dimensions is different from newSize:    
     if newSize[0] != height or newSize[0] != width: 
         rs = cv2.resize(gray2,(newSize[0],newSize[1]));
     #If one of the dimensions is equal to newSize, no resizing is applied:
@@ -117,27 +121,22 @@ for frameInd in range(startFrame,endFrame,1):
     frRec = np.vstack((frRecShort,frameVectFloat));
     
     posDic, maxMovement, cfrVectRec, frameVectFloatRec = getting_frame_record(frRec, 0, windowST, fbList, newSize, roi, CVNsize);
-    im3CRaw = create_3C_image (cfrVectRec, CVNsize)
-        
-    rgbArray = np.zeros((CVNsize,CVNsize,3), 'uint8')
-    rgbArray[..., 0] = im3CRaw[:,:,0]
-    rgbArray[..., 1] = im3CRaw[:,:,1]
-    rgbArray[..., 2] = im3CRaw[:,:,2]
-    im3C = rgbArray
-
-    indImage = frameInd-startFrame #Start saving first frame to position 0 independently of value of frameInd
+    im3C = create_3C_image (cfrVectRec, CVNsize)
+    
+    #Start saving first frame (independently of actual real number of frame) to position index 0 of array:
+    indImage = frameInd-startFrame 
     im3Crec[indImage,:,:,:]=im3C
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
-        
+#Close all opencv stuff        
 cap.release()
 cv2.destroyAllWindows()
-
+#Make Result folder
 newPath = fileDirPathInputName[0:-11] + '/' + 'Result'
 if not os.path.exists(newPath):
     os.mkdir(newPath);
-
+#Save file with images
 OutputFilePath = newPath + '/' + str('%06.0f' % startFrame) + '_' + str('%06.0f' % frameInd)
 with open(OutputFilePath, "wb") as f:
     pickle.dump(im3Crec,f)
